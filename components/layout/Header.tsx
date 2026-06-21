@@ -1,142 +1,120 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAppStore } from "@/lib/store";
 import { Button } from "../ui/Button";
-import { Modal } from "../ui/Modal";
 
-export function RoleSwitcher() {
-  const users = useAppStore((state) => state.users);
+const roleLabels: Record<string, string> = {
+  student: "Студент",
+  teacher: "Преподаватель",
+  admin: "Админ",
+  customer: "Заказчик",
+};
+
+const teacherLinks = [
+  { href: "/teacher", label: "Кабинет" },
+  { href: "/birzha", label: "Биржа" },
+];
+
+const customerLinks = [
+  { href: "/customer", label: "Кабинет" },
+];
+
+export function Header() {
+  const router = useRouter();
   const activeUserId = useAppStore((state) => state.activeUserId);
+  const users = useAppStore((state) => state.users);
   const setActiveUser = useAppStore((state) => state.setActiveUser);
 
-  const students = users.filter((user) => user.role === "student");
-  const teachers = users.filter((user) => user.role === "teacher");
-  const admins = users.filter((user) => user.role === "admin");
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <select
-      value={activeUserId}
-      onChange={(event) => setActiveUser(event.target.value)}
-      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-    >
-      <optgroup label="Студенты">
-        {students.map((user) => (
-          <option key={user.id} value={user.id}>
-            {user.name}
-          </option>
-        ))}
-      </optgroup>
-      <optgroup label="Преподаватели">
-        {teachers.map((user) => (
-          <option key={user.id} value={user.id}>
-            {user.name}
-          </option>
-        ))}
-      </optgroup>
-      <optgroup label="Админ">
-        {admins.map((user) => (
-          <option key={user.id} value={user.id}>
-            {user.name}
-          </option>
-        ))}
-      </optgroup>
-    </select>
-  );
-}
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-export function RegisterModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
-  const registerUser = useAppStore((state) => state.registerUser);
-  const [role, setRole] = useState<"student" | "teacher">("student");
-  const [name, setName] = useState("");
+  const activeUser = users.find((user) => user.id === activeUserId);
 
-  const handleSubmit = () => {
-    if (!name.trim()) return;
-    registerUser(role, name.trim());
-    setName("");
-    setRole("student");
-    onClose();
+  const handleLogout = () => {
+    setActiveUser("");
+    router.push("/sing-in");
   };
 
   return (
-    <Modal
-      open={open}
-      title="Регистрация"
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Отмена
-          </Button>
-          <Button onClick={handleSubmit} disabled={!name.trim()}>
-            Зарегистрироваться
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-4">
+    <header className="border-b border-slate-200 bg-white shadow-sm">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Роль
-          </label>
-          <select
-            value={role}
-            onChange={(event) =>
-              setRole(event.target.value as "student" | "teacher")
-            }
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          >
-            <option value="student">Студент</option>
-            <option value="teacher">Преподаватель</option>
-          </select>
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+            Team assemly
+          </p>
+          <Link href="/" className="text-xl font-bold text-slate-900 hover:text-blue-600 transition-colors">
+            Платформа сборки команд
+          </Link>
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Имя
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Введите имя"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          {mounted && activeUser ? (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src={activeUser.avatar}
+                  alt={activeUser.name}
+                  className="h-9 w-9 rounded-full border border-slate-200 object-cover"
+                />
+                <div className="hidden sm:block text-left">
+                  <p className="text-sm font-semibold text-slate-800 leading-tight">
+                    {activeUser.name}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {roleLabels[activeUser.role] || activeUser.role}
+                  </p>
+                </div>
+              </div>
+              {activeUser.role === "teacher" && (
+                <nav className="flex gap-1">
+                  {teacherLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              )}
+              {activeUser.role === "customer" && (
+                <nav className="flex gap-1">
+                  {customerLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              )}
+              <Button variant="secondary" onClick={handleLogout}>
+                Выйти
+              </Button>
+            </div>
+          ) : (
+            mounted && (
+              <div className="flex gap-2">
+                <Link href="/sing-in">
+                  <Button variant="primary">Войти</Button>
+                </Link>
+                <Link href="/sing-up">
+                  <Button variant="secondary">Регистрация</Button>
+                </Link>
+              </div>
+            )
+          )}
         </div>
       </div>
-    </Modal>
+    </header>
   );
 }
 
-export function Header() {
-  const [registerOpen, setRegisterOpen] = useState(false);
-
-  return (
-    <>
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-              IT-колледж
-            </p>
-            <h1 className="text-xl font-bold text-slate-900">
-              Платформа сборки команд
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <RoleSwitcher />
-            <Button variant="secondary" onClick={() => setRegisterOpen(true)}>
-              Регистрация
-            </Button>
-          </div>
-        </div>
-      </header>
-      <RegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
-    </>
-  );
-}

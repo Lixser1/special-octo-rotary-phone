@@ -1,9 +1,15 @@
-import type { ProjectStatus, StudentStatus } from "@/lib/types";
+import type { ProjectStatus, StudentStatus, TeacherStatus } from "@/lib/types";
 import { Badge } from "../ui/Badge";
 
 const studentLabels: Record<StudentStatus, string> = {
   available: "Свободен",
   busy: "Занят",
+};
+
+const teacherLabels: Record<TeacherStatus, string> = {
+  available: "Свободен",
+  busy: "Занят",
+  on_leave: "В отпуске",
 };
 
 const projectLabels: Record<ProjectStatus, string> = {
@@ -16,6 +22,14 @@ export function StudentStatusBadge({ status }: { status: StudentStatus }) {
   return (
     <Badge variant={status === "available" ? "available" : "busy"}>
       {studentLabels[status]}
+    </Badge>
+  );
+}
+
+export function TeacherStatusBadge({ status }: { status: TeacherStatus }) {
+  return (
+    <Badge variant={status === "available" ? "available" : status === "busy" ? "busy" : "danger"}>
+      {teacherLabels[status]}
     </Badge>
   );
 }

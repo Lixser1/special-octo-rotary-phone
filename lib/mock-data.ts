@@ -1,4 +1,5 @@
 import type { Project, User } from "./types";
+import type { TeacherStatus } from "./types";
 
 export function avatarUrl(userId: string): string {
   return `https://i.pravatar.cc/150?u=${userId}`;
@@ -9,6 +10,8 @@ export const initialUsers: User[] = [
     id: "student-1",
     role: "student",
     name: "Алексей Петров",
+    username: "student-1",
+    password: "123456",
     avatar: avatarUrl("student-1"),
     status: "available",
     bio: "Frontend-разработчик, увлекаюсь React и TypeScript. Ищу коммерческие проекты для портфолио.",
@@ -28,6 +31,8 @@ export const initialUsers: User[] = [
     id: "student-2",
     role: "student",
     name: "Мария Соколова",
+    username: "student-2",
+    password: "123456",
     avatar: avatarUrl("student-2"),
     status: "available",
     bio: "UI/UX-дизайнер с опытом прототипирования и визуального дизайна интерфейсов.",
@@ -47,6 +52,8 @@ export const initialUsers: User[] = [
     id: "student-3",
     role: "student",
     name: "Дмитрий Козлов",
+    username: "student-3",
+    password: "123456",
     avatar: avatarUrl("student-3"),
     status: "available",
     bio: "Backend-разработчик, специализируюсь на Node.js и базах данных.",
@@ -67,6 +74,8 @@ export const initialUsers: User[] = [
     id: "student-4",
     role: "student",
     name: "Елена Волкова",
+    username: "student-4",
+    password: "123456",
     avatar: avatarUrl("student-4"),
     status: "available",
     bio: "Data Science и ML-инженер. Работаю с Python и аналитикой данных.",
@@ -86,6 +95,8 @@ export const initialUsers: User[] = [
     id: "student-5",
     role: "student",
     name: "Иван Новиков",
+    username: "student-5",
+    password: "123456",
     avatar: avatarUrl("student-5"),
     status: "busy",
     bio: "Mobile-разработчик на React Native. Участвую в коммерческих проектах.",
@@ -105,19 +116,51 @@ export const initialUsers: User[] = [
     id: "teacher-1",
     role: "teacher",
     name: "Сергей Морозов",
+    username: "teacher-1",
+    password: "123456",
     avatar: avatarUrl("teacher-1"),
+    status: "available" as TeacherStatus,
+    bio: "Руководитель проектов с 10-летним опытом в коммерческой разработке. Специализация: веб-приложения, e-commerce.",
+    portfolio: ["https://github.com/morozov-s", "https://morozov-dev.ru"],
+    skills: [
+      { name: "React", level: 4 },
+      { name: "Node.js", level: 4 },
+      { name: "TypeScript", level: 3 },
+      { name: "Project Management", level: 5 },
+    ],
   },
   {
     id: "teacher-2",
     role: "teacher",
     name: "Ольга Лебедева",
+    username: "teacher-2",
+    password: "123456",
     avatar: avatarUrl("teacher-2"),
+    status: "available" as TeacherStatus,
+    bio: "Преподаватель по мобильной разработке. Опыт работы в Apple и Yandex.",
+    portfolio: ["https://github.com/lebedeva-o", "https://mobile-dev.ru"],
+    skills: [
+      { name: "React Native", level: 5 },
+      { name: "iOS", level: 4 },
+      { name: "Android", level: 3 },
+      { name: "UI/UX", level: 4 },
+    ],
   },
   {
     id: "admin-1",
     role: "admin",
     name: "Андрей Кузнецов",
+    username: "admin-1",
+    password: "123456",
     avatar: avatarUrl("admin-1"),
+  },
+  {
+    id: "customer-1",
+    role: "customer",
+    name: "Игорь Смирнов",
+    username: "customer-1",
+    password: "123456",
+    avatar: avatarUrl("customer-1"),
   },
 ];
 
@@ -155,4 +198,39 @@ export const initialProjects: Project[] = [
     ],
     team: [{ studentId: "student-5", role: "Mobile-разработчик" }],
   },
+];
+
+export const initialOrders = [
+  {
+    id: "order-1",
+    customerId: "customer-1",
+    title: "Мобильное приложение для трекинга привычек",
+    description: "Необходимо разработать кроссплатформенное мобильное приложение для отслеживания полезных привычек с напоминаниями и графиками прогресса.",
+    specText: "Техническое задание:\n1. Стек: React Native, Node.js.\n2. Основные экраны: авторизация, календарь привычек, статистика (графики), настройки профиля.\n3. Push-уведомления через Firebase.\n4. Дизайн должен быть чистым и минималистичным в светлых тонах.",
+    budget: 120000,
+    deadline: "2026-11-01",
+    status: "pending" as const,
+    requirements: [
+      { skillName: "React Native", minLevel: 3 as const },
+      { skillName: "TypeScript", minLevel: 2 as const },
+      { skillName: "UI/UX", minLevel: 2 as const }
+    ],
+    responses: []
+  },
+  {
+    id: "order-2",
+    customerId: "customer-1",
+    title: "Сервис бронирования переговорных комнат",
+    description: "Разработка веб-сервиса для бронирования переговорных комнат внутри компании с интеграцией с Google календарем.",
+    specText: "Техническое задание:\n1. Стек: React (Next.js), Node.js, PostgreSQL.\n2. Основные функции: интерактивная карта переговорных, бронирование по слотам времени, отправка инвайтов на почту, админ-панель для настройки комнат.\n3. Интеграция по OAuth2 с Google Календарем.",
+    budget: 180000,
+    deadline: "2026-12-15",
+    status: "pending" as const,
+    requirements: [
+      { skillName: "React", minLevel: 3 as const },
+      { skillName: "Node.js", minLevel: 3 as const },
+      { skillName: "PostgreSQL", minLevel: 2 as const }
+    ],
+    responses: []
+  }
 ];

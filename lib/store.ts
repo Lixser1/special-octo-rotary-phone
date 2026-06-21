@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { avatarUrl, initialProjects, initialUsers } from "./mock-data";
+import { persist } from "zustand/middleware";
+import { avatarUrl, initialProjects, initialUsers, initialOrders } from "./mock-data";
 import type {
   CreateProjectInput,
   Project,
@@ -8,6 +9,12 @@ import type {
   StudentStatus,
   TeamMember,
   User,
+  Chat,
+  ChatMessage,
+  Customer,
+  Order,
+  Teacher,
+  TeacherStatus,
 } from "./types";
 
 interface AppState {
@@ -17,12 +24,47 @@ interface AppState {
   teamDrafts: Record<string, TeamMember[]>;
 
   setActiveUser: (id: string) => void;
-  registerUser: (role: "student" | "teacher", name: string) => string;
+  registerUser: (
+    role: "student" | "teacher" | "admin" | "customer",
+    name: string,
+    username?: string,
+    password?: string,
+  ) => string;
   updateStudentProfile: (
     studentId: string,
     updates: Partial<
       Pick<Student, "bio" | "portfolio" | "skills" | "weaknesses" | "status">
     >,
+  ) => void;
+  orders: Order[];
+  chats: Chat[];
+  createOrder: (
+    customerId: string,
+    input: {
+      title: string;
+      description: string;
+      specText?: string;
+      budget: number;
+      deadline: string;
+      requirements: any[];
+    },
+  ) => string;
+  respondToOrder: (orderId: string, teacherId: string) => void;
+  acceptResponse: (orderId: string, teacherId: string) => void;
+  getOrCreateChat: (
+    orderId: string,
+    customerId: string,
+    teacherId: string,
+  ) => Chat;
+  sendChatMessage: (
+    chatId: string,
+    senderId: string,
+    senderName: string,
+    text: string,
+  ) => void;
+  updateTeacherProfile: (
+    teacherId: string,
+    updates: Partial<Pick<Teacher, "bio" | "portfolio" | "skills" | "status">>,
   ) => void;
   createProject: (teacherId: string, input: CreateProjectInput) => string;
   initTeamDraft: (projectId: string) => void;
@@ -73,45 +115,75 @@ function markStudentsBusy(users: User[], team: TeamMember[]): User[] {
 
 let userCounter = 0;
 
-export const useAppStore = create<AppState>((set, get) => ({
-  users: initialUsers,
-  projects: initialProjects,
-  activeUserId: "teacher-1",
-  teamDrafts: {},
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      users: initialUsers,
+      projects: initialProjects,
+      orders: initialOrders,
+      chats: [],
+      activeUserId: "",
+      teamDrafts: {},
 
-  setActiveUser: (id) => set({ activeUserId: id }),
+      setActiveUser: (id) => set({ activeUserId: id }),
 
-  registerUser: (role, name) => {
-    userCounter += 1;
-    const id = `${role}-new-${userCounter}`;
+      registerUser: (role, name, username, password) => {
+        userCounter += 1;
+        const id = `${role}-new-${userCounter}`;
 
-    const newUser: User =
-      role === "student"
-        ? {
-            id,
-            role: "student",
-            name,
-            avatar: avatarUrl(id),
-            status: "available",
-            bio: "",
-            portfolio: [],
-            skills: [],
-            weaknesses: [],
-          }
-        : {
-            id,
-            role: "teacher",
-            name,
-            avatar: avatarUrl(id),
-          };
+        const newUser: User =
+          role === "student"
+            ? {
+                id,
+                role: "student",
+                name,
+                username,
+                password,
+                avatar: avatarUrl(id),
+                status: "available",
+                bio: "",
+                portfolio: [],
+                skills: [],
+                weaknesses: [],
+              }
+            : role === "teacher"
+            ? {
+                id,
+                role: "teacher",
+                name,
+                username,
+                password,
+                avatar: avatarUrl(id),
+                status: "available" as TeacherStatus,
+                bio: "",
+                portfolio: [],
+                skills: [],
+              }
+            : role === "customer"
+            ? {
+                id,
+                role: "customer",
+                name,
+                username,
+                password,
+                avatar: avatarUrl(id),
+              }
+            : {
+                id,
+                role: "admin",
+                name,
+                username,
+                password,
+                avatar: avatarUrl(id),
+              };
 
-    set((state) => ({
-      users: [...state.users, newUser],
-      activeUserId: id,
-    }));
+        set((state) => ({
+          users: [...state.users, newUser],
+          activeUserId: id,
+        }));
 
-    return id;
-  },
+        return id;
+      },
 
   updateStudentProfile: (studentId, updates) => {
     set((state) => ({
@@ -318,7 +390,141 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     return results;
   },
-}));
+
+      createOrder: (customerId, input) => {
+        const id = `order-${Date.now()}`;
+        const newOrder: Order = {
+          id,
+          customerId,
+          title: input.title,
+          description: input.description,
+          specText: input.specText,
+          budget: input.budget,
+          deadline: input.deadline,
+          status: "pending",
+          requirements: input.requirements,
+          responses: [],
+        };
+        set((state) => ({
+          orders: [...state.orders, newOrder],
+        }));
+        return id;
+      },
+
+      respondToOrder: (orderId, teacherId) => {
+        set((state) => ({
+          orders: state.orders.map((order) => {
+            if (order.id !== orderId) return order;
+            if (order.responses.some((r) => r.teacherId === teacherId)) return order;
+            return {
+              ...order,
+              responses: [...order.responses, { teacherId, status: "applied" }],
+              status: order.status === "pending" ? "negotiating" : order.status,
+            };
+          }),
+        }));
+      },
+
+      acceptResponse: (orderId, teacherId) => {
+        const order = get().orders.find((o) => o.id === orderId);
+        if (!order) return;
+
+        const projectId = `project-order-${orderId}`;
+        const newProject: Project = {
+          id: projectId,
+          teacherId,
+          title: order.title,
+          description: order.description,
+          budget: order.budget,
+          deadline: order.deadline,
+          status: "draft",
+          requirements: order.requirements,
+          team: [],
+          orderId,
+        };
+
+        set((state) => ({
+          orders: state.orders.map((o) => {
+            if (o.id !== orderId) return o;
+            return {
+              ...o,
+              status: "accepted",
+              teacherId,
+              responses: o.responses.map((r) =>
+                r.teacherId === teacherId
+                  ? { ...r, status: "accepted" as const }
+                  : { ...r, status: "declined" as const }
+              ),
+            };
+          }),
+          projects: [...state.projects, newProject],
+        }));
+      },
+
+      getOrCreateChat: (orderId, customerId, teacherId) => {
+        const existing = get().chats.find(
+          (c) =>
+            c.orderId === orderId &&
+            c.customerId === customerId &&
+            c.teacherId === teacherId
+        );
+        if (existing) return existing;
+
+        const id = `chat-${orderId}-${customerId}-${teacherId}`;
+        const newChat: Chat = {
+          id,
+          orderId,
+          customerId,
+          teacherId,
+          messages: [],
+        };
+        set((state) => ({
+          chats: [...state.chats, newChat],
+        }));
+        return newChat;
+      },
+
+      sendChatMessage: (chatId, senderId, senderName, text) => {
+        const newMessage: ChatMessage = {
+          id: `msg-${Date.now()}`,
+          senderId,
+          senderName,
+          text,
+          timestamp: new Date().toISOString(),
+        };
+        set((state) => ({
+          chats: state.chats.map((chat) => {
+            if (chat.id !== chatId) return chat;
+            return {
+              ...chat,
+              messages: [...chat.messages, newMessage],
+            };
+          }),
+        }));
+      },
+
+      updateTeacherProfile: (teacherId, updates) => {
+        set((state) => ({
+          users: state.users.map((user) =>
+            user.id === teacherId && user.role === "teacher"
+              ? { ...user, ...updates }
+              : user
+          ),
+        }));
+      },
+    }),
+    {
+      name: "college-team-platform-storage",
+      partialize: (state) => ({
+        users: state.users,
+        projects: state.projects,
+        activeUserId: state.activeUserId,
+        orders: state.orders,
+        chats: state.chats,
+      }),
+    }
+  )
+);
 
 export function isStudent(user: User): user is Student {
   return user.role === "student";

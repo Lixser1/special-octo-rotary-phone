@@ -21,6 +21,7 @@ const roleLabels: Record<Role, string> = {
   student: "Студент",
   teacher: "Преподаватель",
   admin: "Админ",
+  customer: "Заказчик",
 };
 
 export function AdminDashboard() {
@@ -97,6 +98,7 @@ export function AdminDashboard() {
               <option value="student">Студенты</option>
               <option value="teacher">Преподаватели</option>
               <option value="admin">Админы</option>
+              <option value="customer">Заказчики</option>
             </select>
           </div>
           <Table>

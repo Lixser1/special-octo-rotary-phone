@@ -1,8 +1,10 @@
 export type SkillLevel = 1 | 2 | 3 | 4 | 5;
 
-export type Role = "student" | "teacher" | "admin";
+export type Role = "student" | "teacher" | "admin" | "customer";
 
 export type StudentStatus = "available" | "busy";
+
+export type TeacherStatus = "available" | "busy";
 
 export type ProjectStatus = "draft" | "active" | "completed";
 
@@ -15,6 +17,8 @@ export interface BaseUser {
   id: string;
   name: string;
   avatar: string;
+  username?: string;
+  password?: string;
   blocked?: boolean;
   blockReason?: string;
 }
@@ -30,13 +34,56 @@ export interface Student extends BaseUser {
 
 export interface Teacher extends BaseUser {
   role: "teacher";
+  status: TeacherStatus;
+  bio?: string;
+  portfolio?: string[];
+  skills?: Skill[];
+}
+
+export interface Customer extends BaseUser {
+  role: "customer";
 }
 
 export interface Admin extends BaseUser {
   role: "admin";
 }
 
-export type User = Student | Teacher | Admin;
+export type User = Student | Teacher | Admin | Customer;
+
+export interface OrderResponse {
+  teacherId: string;
+  status: "applied" | "declined" | "accepted";
+}
+
+export interface Order {
+  id: string;
+  customerId: string;
+  teacherId?: string;
+  title: string;
+  description: string;
+  specText?: string;
+  budget: number;
+  deadline: string;
+  status: "pending" | "negotiating" | "accepted" | "completed";
+  requirements: ProjectRequirement[];
+  responses: OrderResponse[];
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface Chat {
+  id: string;
+  orderId: string;
+  teacherId: string;
+  customerId: string;
+  messages: ChatMessage[];
+}
 
 export interface ProjectRequirement {
   skillName: string;
@@ -58,6 +105,7 @@ export interface Project {
   status: ProjectStatus;
   requirements: ProjectRequirement[];
   team: TeamMember[];
+  orderId?: string;
 }
 
 export interface MatchDetail {
