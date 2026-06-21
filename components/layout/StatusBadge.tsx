@@ -9,7 +9,6 @@ const studentLabels: Record<StudentStatus, string> = {
 const teacherLabels: Record<TeacherStatus, string> = {
   available: "Свободен",
   busy: "Занят",
-  on_leave: "В отпуске",
 };
 
 const projectLabels: Record<ProjectStatus, string> = {

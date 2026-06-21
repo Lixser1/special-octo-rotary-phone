@@ -16,13 +16,9 @@ export function TeacherProfileView({ teacher, activeProjects }: TeacherProfileVi
   const updateTeacherProfile = useAppStore((state) => state.updateTeacherProfile);
 
   const toggleStatus = () => {
-    const nextStatus =
-      teacher.status === "available"
-        ? ("busy" as const)
-        : teacher.status === "busy"
-        ? ("on_leave" as const)
-        : ("available" as const);
-    updateTeacherProfile(teacher.id, { status: nextStatus });
+    updateTeacherProfile(teacher.id, {
+      status: teacher.status === "available" ? ("busy" as const) : ("available" as const),
+    });
   };
 
   const updateBio = (value: string) => {
@@ -57,8 +53,6 @@ export function TeacherProfileView({ teacher, activeProjects }: TeacherProfileVi
         return "Свободен";
       case "busy":
         return "Занят";
-      case "on_leave":
-        return "В отпуске";
       default:
         return status;
     }
@@ -69,8 +63,6 @@ export function TeacherProfileView({ teacher, activeProjects }: TeacherProfileVi
       case "available":
         return "Отметить как занят";
       case "busy":
-        return "Взять отпуск";
-      case "on_leave":
         return "Отметить как свободен";
     }
   };
