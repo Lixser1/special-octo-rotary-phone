@@ -4,6 +4,7 @@ import { avatarUrl, initialProjects, initialUsers, initialOrders } from "./mock-
 import type {
   CreateProjectInput,
   Project,
+  ProjectStatus,
   Skill,
   Student,
   StudentStatus,
@@ -33,7 +34,7 @@ interface AppState {
   updateStudentProfile: (
     studentId: string,
     updates: Partial<
-      Pick<Student, "bio" | "portfolio" | "skills" | "weaknesses" | "status">
+      Pick<Student, "bio" | "portfolio" | "skills" | "weaknesses" | "status" | "rating" | "completedProjectIds" | "positiveReviewsCount" | "isSuperStudent">
     >,
   ) => void;
   orders: Order[];
@@ -79,6 +80,8 @@ interface AppState {
   deleteProject: (projectId: string) => void;
   deleteUser: (userId: string) => void;
   blockUser: (userId: string, reason: string) => void;
+  completeProject: (studentId: string, projectId: string) => void;
+  submitReview: (studentId: string, rating: number) => void;
 
   getActiveUser: () => User | undefined;
   getStudents: () => Student[];
@@ -115,10 +118,26 @@ function markStudentsBusy(users: User[], team: TeamMember[]): User[] {
 
 let userCounter = 0;
 
+function migrateUsers(users: User[]): User[] {
+  return users.map((user) => {
+    if (user.role === "student") {
+      const student = user as Student;
+      return {
+        ...student,
+        completedProjectIds: student.completedProjectIds ?? [],
+        rating: student.rating ?? 0,
+        positiveReviewsCount: student.positiveReviewsCount ?? 0,
+        isSuperStudent: student.isSuperStudent ?? false,
+      };
+    }
+    return user;
+  });
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      users: initialUsers,
+      users: migrateUsers(initialUsers),
       projects: initialProjects,
       orders: initialOrders,
       chats: [],
@@ -145,6 +164,10 @@ export const useAppStore = create<AppState>()(
                 portfolio: [],
                 skills: [],
                 weaknesses: [],
+                completedProjectIds: [],
+                rating: 0,
+                positiveReviewsCount: 0,
+                isSuperStudent: false,
               }
             : role === "teacher"
             ? {
@@ -265,7 +288,7 @@ export const useAppStore = create<AppState>()(
     }));
   },
 
-  saveTeam: (projectId) => {
+  saveTeam: (projectId: string) => {
     const state = get();
     const draft = state.teamDrafts[projectId];
     const project = state.projects.find((item) => item.id === projectId);
@@ -361,6 +384,58 @@ export const useAppStore = create<AppState>()(
         user.id === userId ? { ...user, blocked: true, blockReason: reason } : user,
       ),
     }));
+  },
+
+  completeProject: (studentId, projectId) => {
+    set((state) => {
+      const users = state.users.map((user) => {
+        if (user.id !== studentId || user.role !== "student") return user;
+        
+        const newCompletedIds = [...user.completedProjectIds];
+        if (!newCompletedIds.includes(projectId)) {
+          newCompletedIds.push(projectId);
+        }
+
+        const isSuperStudent = newCompletedIds.length >= 4;
+        
+        return {
+          ...user,
+          completedProjectIds: newCompletedIds,
+          isSuperStudent: isSuperStudent || user.isSuperStudent,
+        };
+      });
+
+      // Also mark the project as completed if it exists
+      const projects = state.projects.map((project) => {
+        if (project.id === projectId) {
+          return { ...project, status: "completed" as ProjectStatus };
+        }
+        return project;
+      });
+
+      return { users, projects };
+    });
+  },
+
+  submitReview: (studentId, rating) => {
+    set((state) => {
+      const users = state.users.map((user) => {
+        if (user.id !== studentId || user.role !== "student") return user;
+        
+        const isPositive = rating >= 4;
+        const newPositiveCount = isPositive ? user.positiveReviewsCount + 1 : user.positiveReviewsCount;
+        const newRating = user.rating + rating;
+        const isSuperStudent = user.isSuperStudent || (newPositiveCount >= 7);
+        
+        return {
+          ...user,
+          rating: newRating,
+          positiveReviewsCount: newPositiveCount,
+          isSuperStudent,
+        };
+      });
+      return { users };
+    });
   },
 
   getActiveUser: () => get().users.find((user) => user.id === get().activeUserId),
@@ -522,6 +597,13 @@ export const useAppStore = create<AppState>()(
         orders: state.orders,
         chats: state.chats,
       }),
+      onRehydrateStorage: () => {
+        return (state, error) => {
+          if (error || !state?.users) return;
+          const migratedUsers = migrateUsers(state.users);
+          state.users = migratedUsers;
+        };
+      },
     }
   )
 );

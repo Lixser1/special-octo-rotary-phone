@@ -30,6 +30,10 @@ export interface Student extends BaseUser {
   portfolio: string[];
   skills: Skill[];
   weaknesses: Skill[];
+  completedProjectIds: string[];
+  rating: number;
+  positiveReviewsCount: number;
+  isSuperStudent: boolean;
 }
 
 export interface Teacher extends BaseUser {

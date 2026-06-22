@@ -2,28 +2,47 @@
 
 import { useMemo, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import type { Order, Teacher, Chat, User } from "@/lib/types";
+import type { Order, Teacher, Student, Chat, User } from "@/lib/types";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { ChatWindow } from "../ui/ChatWindow";
 import { Modal } from "../ui/Modal";
 
-type BirzhaView = "list" | "detail" | "chat" | "apply";
+type BirzhaView = "list" | "detail" | "chat" | "apply" | "create";
 
-export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
+interface BirzhaDashboardProps {
+  user: Teacher | Student;
+  canCreateOrder: boolean;
+}
+
+export function BirzhaDashboard({ user, canCreateOrder }: BirzhaDashboardProps) {
   const users = useAppStore((state) => state.users);
   const orders = useAppStore((state) => state.orders);
   const chats = useAppStore((state) => state.chats);
   const respondToOrder = useAppStore((state) => state.respondToOrder);
+  const createOrder = useAppStore((state) => state.createOrder);
   const getOrCreateChat = useAppStore((state) => state.getOrCreateChat);
   const activeUserId = useAppStore((state) => state.activeUserId);
+
+  const isTeacher = user.role === "teacher";
+  const isSuperStudent = user.role === "student" && user.isSuperStudent;
 
   const [view, setView] = useState<BirzhaView>("list");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applyMessage, setApplyMessage] = useState("");
+
+  // Form State
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [specText, setSpecText] = useState("");
+  const [budget, setBudget] = useState(50000);
+  const [deadline, setDeadline] = useState("");
+  const [requirements, setRequirements] = useState<Array<{ skillName: string; minLevel: number }>>([
+    { skillName: "React", minLevel: 3 },
+  ]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter(
@@ -45,58 +64,48 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
     [users, selectedOrder]
   );
 
-  const teacherResponses = useMemo(
+  const responses = useMemo(
     () =>
       selectedOrder
-        ? selectedOrder.responses.filter((r) => r.teacherId === teacher.id)
+        ? selectedOrder.responses.filter((r) => r.teacherId === (user as Teacher).id)
         : [],
-    [selectedOrder, teacher.id]
+    [selectedOrder, user.id]
   );
 
-  const teacherHasApplied = teacherResponses.length > 0;
-
-  const teacherChat = useMemo(() => {
-    if (!selectedOrder || !selectedOrder.customerId) return null;
-    return chats.find(
-      (c) =>
-        c.orderId === selectedOrderId &&
-        c.customerId === selectedOrder.customerId &&
-        c.teacherId === teacher.id
-    );
-  }, [chats, selectedOrderId, selectedOrder?.customerId, teacher.id]);
-
-  const openDetail = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setView("detail");
-  };
-
-  const openChat = () => {
-    if (!selectedOrder) return;
-    const chatRoom = getOrCreateChat(
-      selectedOrder.id,
-      selectedOrder.customerId,
-      teacher.id
-    );
-    setActiveChatId(chatRoom.id);
-    setView("chat");
-  };
+  const hasApplied = responses.length > 0;
 
   const handleApply = () => {
-    if (!selectedOrder || teacherHasApplied) return;
-    respondToOrder(selectedOrder.id, teacher.id);
-    if (applyMessage.trim()) {
-      const chatRoom = getOrCreateChat(
-        selectedOrder.id,
-        selectedOrder.customerId,
-        teacher.id
-      );
-      const userName = users.find((u) => u.id === activeUserId)?.name || teacher.name;
-      getOrCreateChat(selectedOrder.id, selectedOrder.customerId, teacher.id);
-      // Message will be sent via ChatWindow
-    }
+    if (!selectedOrder || hasApplied) return;
+    respondToOrder(selectedOrder.id, user.id);
     setShowApplyModal(false);
     setApplyMessage("");
     setView("detail");
+  };
+
+  const handleCreateOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim() || !deadline) return;
+
+    const validReqs = requirements
+      .filter((r) => r.skillName.trim() !== "")
+      .map((r) => ({ skillName: r.skillName.trim(), minLevel: r.minLevel as 1 | 2 | 3 | 4 | 5 }));
+
+    createOrder((user as any).id, {
+      title: title.trim(),
+      description: description.trim(),
+      specText: specText.trim() || undefined,
+      budget,
+      deadline,
+      requirements: validReqs,
+    });
+
+    setTitle("");
+    setDescription("");
+    setSpecText("");
+    setBudget(50000);
+    setDeadline("");
+    setRequirements([{ skillName: "React", minLevel: 3 }]);
+    setView("list");
   };
 
   const handleBack = () => {
@@ -122,12 +131,93 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Биржа заказов</h2>
-        <p className="text-sm text-slate-500">
-          Просматривайте заказы от заказчиков и откликайтесь на подходящие проекты
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Биржа заказов</h2>
+          <p className="text-sm text-slate-500">
+            {canCreateOrder 
+              ? "Создавайте свои заказы и откликайтесь на проекты других" 
+              : "Просматривайте заказы от заказчиков и откликайтесь на подходящие проекты"}
+          </p>
+        </div>
+        {canCreateOrder && view !== "create" && (
+          <Button onClick={() => setView("create")}>Создать заказ</Button>
+        )}
       </div>
+
+      {/* === CREATE ORDER === */}
+      {view === "create" && (
+        <Card title="Новый заказ">
+          <form onSubmit={handleCreateOrder} className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Например: Разработка корпоративного чат-бота"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Бюджет (₽)</label>
+                  <input
+                    type="number"
+                    min={1000}
+                    required
+                    value={budget}
+                    onChange={(e) => setBudget(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Дедлайн</label>
+                  <input
+                    type="date"
+                    required
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Описание</label>
+              <textarea
+                rows={3}
+                required
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Опишите основные цели проекта"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Техническое задание (ТЗ)</label>
+              <textarea
+                rows={5}
+                value={specText}
+                onChange={(e) => setSpecText(e.target.value)}
+                placeholder="Опишите технические требования..."
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end border-t border-slate-100 pt-4">
+              <Button type="button" variant="secondary" onClick={() => setView("list")}>
+                Отмена
+              </Button>
+              <Button type="submit">Опубликовать заказ</Button>
+            </div>
+          </form>
+        </Card>
+      )}
 
       {/* === LIST VIEW === */}
       {view === "list" && (
@@ -150,15 +240,16 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
                 </svg>
                 <p className="mb-2 text-base font-medium">Нет доступных заказов</p>
                 <p className="text-sm text-slate-400">
-                  Новые заказы от заказчиков появятся здесь
+                  Новые заказы появятся здесь
                 </p>
               </div>
             </Card>
           ) : (
             filteredOrders.map((order) => {
               const cust = users.find((u) => u.id === order.customerId);
+              const isMine = order.customerId === user.id;
               return (
-                <Card key={order.id} title={order.title}>
+                <Card key={order.id} title={order.title} action={isMine ? <Badge variant="success">Ваш</Badge> : undefined}>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex flex-1 items-start gap-3">
                       {cust && (
@@ -192,28 +283,14 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
                             Откликов: {order.responses.length}
                           </span>
                         </div>
-                        {order.requirements.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {order.requirements.slice(0, 4).map((req) => (
-                              <span
-                                key={req.skillName}
-                                className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
-                              >
-                                {req.skillName} {req.minLevel}
-                              </span>
-                            ))}
-                            {order.requirements.length > 4 && (
-                              <span className="text-[11px] text-slate-400">
-                                +{order.requirements.length - 4}
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                     <Button
                       variant="secondary"
-                      onClick={() => openDetail(order.id)}
+                      onClick={() => {
+                        setSelectedOrderId(order.id);
+                        setView("detail");
+                      }}
                       className="flex-shrink-0"
                     >
                       Подробнее
@@ -323,7 +400,7 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
                 </div>
 
                 {/* Applied status */}
-                {teacherHasApplied && (
+                {hasApplied && (
                   <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700 border border-green-100">
                     ✓ Вы уже откликнулись на этот заказ
                     {selectedOrder.status === "negotiating" && (
@@ -341,10 +418,10 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
 
           {/* Right sidebar */}
           <div className="space-y-4">
-            {!teacherHasApplied ? (
+            {!hasApplied ? (
               <Card>
                 <p className="mb-3 text-sm text-slate-600">
-                  Хотите взять этот проект? Откликнитесь, и заказчик рассмотрит вашу заявку.
+                  Хотите взять этот проект? Откликнитесь.
                 </p>
                 <Button
                   className="w-full justify-center"
@@ -367,20 +444,18 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
                   {selectedOrder.status === "negotiating" && (
                     <Button
                       className="w-full justify-center"
-                      onClick={openChat}
+                      onClick={() => {
+                        const chatRoom = getOrCreateChat(
+                          selectedOrder.id,
+                          selectedOrder.customerId,
+                          user.id
+                        );
+                        setActiveChatId(chatRoom.id);
+                        setView("chat");
+                      }}
                     >
                       Открыть чат
                     </Button>
-                  )}
-                  {selectedOrder.status === "accepted" && (
-                    <div className="rounded-lg bg-blue-50 p-3 text-center">
-                      <p className="text-sm font-semibold text-blue-700">
-                        Заказ принят!
-                      </p>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Начните работу над проектом
-                      </p>
-                    </div>
                   )}
                 </div>
               </Card>
@@ -395,61 +470,6 @@ export function BirzhaDashboard({ teacher }: { teacher: Teacher }) {
                 <p className="text-xs text-slate-500">откликов</p>
               </div>
             </Card>
-
-            {/* Other teachers who responded */}
-            {selectedOrder.responses.length > 0 && (
-              <Card title="Откликнувшиеся преподаватели">
-                <div className="space-y-3">
-                  {selectedOrder.responses.map((resp) => {
-                    const t = users.find((u) => u.id === resp.teacherId);
-                    if (!t) return null;
-                    return (
-                      <div
-                        key={resp.teacherId}
-                        className={`flex items-center gap-3 rounded-lg p-2 ${
-                          resp.teacherId === teacher.id
-                            ? "bg-blue-50 border border-blue-200"
-                            : "bg-slate-50"
-                        }`}
-                      >
-                        <img
-                          src={t.avatar}
-                          alt={t.name}
-                          className="h-8 w-8 rounded-full border border-slate-200 object-cover"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-slate-800">
-                            {t.name}
-                          </p>
-                          <p className="truncate text-[10px] text-slate-400">
-                            {resp.teacherId === teacher.id
-                              ? "Вы"
-                              : "Преподаватель"}
-                          </p>
-                        </div>
-                        {resp.teacherId !== teacher.id && (
-                          <Badge
-                            variant={
-                              resp.status === "accepted"
-                                ? "success"
-                                : resp.status === "declined"
-                                ? "danger"
-                                : "default"
-                            }
-                          >
-                            {resp.status === "accepted"
-                              ? "Принят"
-                              : resp.status === "declined"
-                              ? "Отклонён"
-                              : "Заявка"}
-                          </Badge>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            )}
           </div>
         </div>
       )}

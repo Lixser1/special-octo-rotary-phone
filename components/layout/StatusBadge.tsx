@@ -37,6 +37,14 @@ export function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
   return <Badge variant={status}>{projectLabels[status]}</Badge>;
 }
 
+export function SuperStudentBadge() {
+  return (
+    <Badge variant="success">
+      🏆 Супер-студент
+    </Badge>
+  );
+}
+
 export function formatBudget(amount: number): string {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",

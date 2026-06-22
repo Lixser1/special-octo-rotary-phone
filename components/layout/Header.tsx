@@ -22,6 +22,10 @@ const customerLinks = [
   { href: "/customer", label: "Кабинет" },
 ];
 
+const adminLinks = [
+  { href: "/admin", label: "Панель" },
+];
+
 export function Header() {
   const router = useRouter();
   const activeUserId = useAppStore((state) => state.activeUserId);
@@ -65,9 +69,14 @@ export function Header() {
                   <p className="text-sm font-semibold text-slate-800 leading-tight">
                     {activeUser.name}
                   </p>
-                  <p className="text-xs text-slate-500">
-                    {roleLabels[activeUser.role] || activeUser.role}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-slate-500">
+                      {roleLabels[activeUser.role] || activeUser.role}
+                    </p>
+                    {activeUser.role === "student" && (activeUser as any).isSuperStudent && (
+                      <span className="text-[10px] font-semibold text-amber-600">🏆</span>
+                    )}
+                  </div>
                 </div>
               </div>
               {activeUser.role === "teacher" && (
@@ -94,6 +103,29 @@ export function Header() {
                       {link.label}
                     </Link>
                   ))}
+                </nav>
+              )}
+              {activeUser.role === "admin" && (
+                <nav className="flex gap-1">
+                  {adminLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              )}
+              {activeUser.role === "student" && (activeUser as any).isSuperStudent && (
+                <nav className="flex gap-1">
+                  <Link
+                    href="/birzha"
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                  >
+                    Биржа
+                  </Link>
                 </nav>
               )}
               <Button variant="secondary" onClick={handleLogout}>

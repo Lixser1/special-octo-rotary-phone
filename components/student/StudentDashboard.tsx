@@ -38,6 +38,9 @@ export function StudentDashboard({ student }: { student: Student }) {
     });
   };
 
+  const completedCount = student.completedProjectIds.length;
+  const isSuperStudentReady = completedCount >= 4 && student.positiveReviewsCount >= 7;
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <div className="grid gap-6 lg:grid-cols-2">
@@ -68,7 +71,7 @@ export function StudentDashboard({ student }: { student: Student }) {
           <div className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                О себе
+                О себе (Описание своей специальности и опыта)
               </label>
               <textarea
                 value={student.bio}
@@ -82,7 +85,7 @@ export function StudentDashboard({ student }: { student: Student }) {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <label className="text-sm font-medium text-slate-700">
-                  Портфолио
+                  Портфолио (Пример выполненных работ)
                 </label>
                 <Button
                   variant="secondary"
@@ -116,7 +119,7 @@ export function StudentDashboard({ student }: { student: Student }) {
           </div>
         </Card>
 
-        <Card title="Навыки">
+        <Card title="Навыки" className="lg:col-span-2">
           <SkillsEditor
             title=""
             items={student.skills}
@@ -125,7 +128,7 @@ export function StudentDashboard({ student }: { student: Student }) {
           />
         </Card>
 
-        <Card title="Слабые стороны">
+        <Card title="Слабые стороны" className="lg:col-span-2">
           <SkillsEditor
             title=""
             items={student.weaknesses}
@@ -134,6 +137,53 @@ export function StudentDashboard({ student }: { student: Student }) {
               updateStudentProfile(student.id, { weaknesses })
             }
           />
+        </Card>
+
+        <Card className="lg:col-span-2" title="Прогресс к званию Супер-студент">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700">Завершенные проекты</p>
+              <div className="flex items-center gap-2">
+                <div className="h-2 flex-1 rounded-full bg-slate-100">
+                  <div 
+                    className="h-full rounded-full bg-blue-600 transition-all"
+                    style={{ width: `${Math.min((completedCount / 4) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className="text-sm font-bold text-slate-900">{completedCount} / 4</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700">Положительные отзывы</p>
+              <div className="flex items-center gap-2">
+                <div className="h-2 flex-1 rounded-full bg-slate-100">
+                  <div 
+                    className="h-full rounded-full bg-green-600 transition-all"
+                    style={{ width: `${Math.min((student.positiveReviewsCount / 7) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className="text-sm font-bold text-slate-900">{student.positiveReviewsCount} / 7</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center justify-center gap-2 rounded-lg bg-slate-50 p-4">
+              {student.isSuperStudent ? (
+                <div className="text-center">
+                  <span className="block text-2xl">🏆</span>
+                  <span className="block text-sm font-bold text-amber-600">Супер-студент</span>
+                </div>
+              ) : isSuperStudentReady ? (
+                <Button className="w-full justify-center" onClick={() => updateStudentProfile(student.id, { isSuperStudent: true })}>
+                  Получить звание
+                </Button>
+              ) : (
+                <div className="text-center text-sm text-slate-500">
+                  Выполните условия для получения звания
+                </div>
+              )}
+            </div>
+          </div>
         </Card>
       </div>
 

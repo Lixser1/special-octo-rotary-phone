@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import { Header } from "@/components/layout/Header";
 import { BirzhaDashboard } from "@/components/birzha/BirzhaDashboard";
+import type { Teacher, Student } from "@/lib/types";
 
 export default function BirzhaPage() {
   const router = useRouter();
@@ -19,13 +19,13 @@ export default function BirzhaPage() {
     if (mounted) {
       if (!activeUser) {
         router.replace("/sing-in");
-      } else if (activeUser.role !== "teacher") {
+      } else if (activeUser.role !== "teacher" && !(activeUser.role === "student" && (activeUser as any).isSuperStudent)) {
         router.replace(`/${activeUser.role}`);
       }
     }
   }, [mounted, activeUser, router]);
 
-  if (!mounted || !activeUser || activeUser.role !== "teacher") {
+  if (!mounted || !activeUser) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="text-slate-500">Загрузка...</div>
@@ -33,9 +33,16 @@ export default function BirzhaPage() {
     );
   }
 
+  if (activeUser.role !== "teacher" && !(activeUser.role === "student" && (activeUser as any).isSuperStudent)) {
+    return null;
+  }
+
+  const canCreateOrder = activeUser.role === "student";
+  const user = activeUser as Teacher | Student;
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <BirzhaDashboard teacher={activeUser} />
+      <BirzhaDashboard user={user} canCreateOrder={canCreateOrder} />
     </div>
   );
 }

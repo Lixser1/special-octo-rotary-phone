@@ -190,10 +190,7 @@ export function TeamBuilder({ project, onBack, onSaved }: TeamBuilderProps) {
             Сбор команды: {project.title}
           </h2>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={!teamCoverage.allMet || draft.length === 0}
-        >
+        <Button onClick={handleSave}>
           Сохранить команду
         </Button>
       </div>
